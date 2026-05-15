@@ -1,70 +1,123 @@
-# Getting Started with Create React App
+# AI Interview Assessment System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Full-stack portfolio project: **React** (Tailwind + Chart.js) → **Spring Boot** (JWT, MySQL) → **Flask** (resume PDF parsing, question generation, NLP-style scoring).
 
-## Available Scripts
+## Overview
 
-In the project directory, you can run:
+This repository provides a complete interview practice platform:
 
-### `npm start`
+- **Frontend:** React app with registration, resume upload, mock interview flow, and dashboard charts.
+- **Backend:** Spring Boot REST API with JWT authentication, user management, resume storage, and interview result persistence.
+- **AI service:** Python Flask microservice that extracts resume skills, generates questions, and analyzes interview answers.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+The main use case is storing a resume, generating personalized interview questions, submitting spoken or typed answers, and reviewing AI-driven feedback.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Repository layout
 
-### `npm test`
+| Folder | Purpose |
+|--------|---------|
+| `frontend/` | React UI and client-side pages |
+| `backend/` | Spring Boot API, security, and persistence |
+| `ai-service/` | Flask microservice for resume parsing and interview scoring |
+| `database/` | MySQL schema file and reference scripts |
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Prerequisites
 
-### `npm run build`
+- **Node.js 18+** and **npm**
+- **JDK 17** and **Maven**
+- **Python 3.10+**
+- **MySQL 8** (or compatible)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Setup Steps
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 1. Database
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Create the database and apply the reference schema. If you use JPA auto-update, this step is optional but recommended for initial setup.
 
-### `npm run eject`
+```bash
+mysql -u root -p < database/schema.sql
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Update DB credentials in `backend/src/main/resources/application.properties`:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```properties
+spring.datasource.username=root
+spring.datasource.password=your_password
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 2. AI service (Flask)
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Install Python dependencies and start the microservice:
 
-## Learn More
+```bash
+cd ai-service
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+python app.py
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+The service listens on **http://localhost:5000**.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+> Keep this Flask server running before starting the backend. If it is not available, resume parsing and question generation will fall back to placeholder behavior.
 
-### Code Splitting
+### 3. Backend (Spring Boot)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Run the Spring Boot API:
 
-### Analyzing the Bundle Size
+```bash
+cd backend
+mvn spring-boot:run
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+The backend will start on **http://localhost:8080**. Adjust `app.ai.base-url` in `application.properties` if the Flask service runs elsewhere.
 
-### Making a Progressive Web App
+### 4. Frontend (React)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Install dependencies and start the web UI:
 
-### Advanced Configuration
+```bash
+cd frontend
+npm install
+npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Open **http://localhost:3000** in your browser.
 
-### Deployment
+## Development notes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- Frontend dev requests to `/api/*` are proxied to the Spring backend via `frontend/package.json`.
+- Production builds should set `REACT_APP_API_URL` to the backend API origin.
+- The backend stores uploaded resumes in `backend/uploads/resumes/`.
+- The Flask AI service uses `pdfplumber` for PDF extraction and spaCy for entity detection.
 
-### `npm run build` fails to minify
+## Main API (JWT)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/api/auth/register` | No | Register a new user |
+| POST | `/api/auth/login` | No | Login and receive JWT token |
+| GET | `/api/users/me` | Bearer | Fetch current user info |
+| POST | `/api/resumes/upload` | Bearer | Upload PDF resume and receive skills/questions |
+| POST | `/api/interviews/analyze` | Bearer | Submit question, answer, and keywords for scoring |
+| GET | `/api/interviews/history` | Bearer | Retrieve past interview attempts |
+| GET | `/api/interviews/keywords` | Bearer | Get latest resume skills for question generation |
+
+## User flow
+
+1. Register or login.
+2. Upload a PDF resume.
+3. Get skills and questions generated from the resume.
+4. Practice interview answers using text or browser speech recognition.
+5. Review AI feedback and historical scores on the dashboard.
+
+## Troubleshooting
+
+- If resume upload fails, verify the Flask service is running and `app.ai.base-url` is correct.
+- If login fails, check backend logs and database connectivity.
+- If the UI does not load, make sure React is running on port `3000` and backend on `8080`.
+
+## Security note
+
+Change `app.jwt.secret` and database credentials before sharing or deploying this repository publicly.
